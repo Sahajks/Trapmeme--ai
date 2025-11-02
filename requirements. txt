@@ -1,35 +1,10 @@
-# Core Framework
 streamlit==1.28.0
-
-# Data Analysis & Manipulation
 pandas==2.1.0
 numpy==1.24.0
-
-# Interactive Charts & Visualization
 plotly==5.15.0
-
-# API Integration & Web Requests
 requests==2.31.0
-websocket-client==1.6.0
-
-# Technical Analysis & Indicators
-ta-lib==0.4.0
-ta==0.10.0  # Backup pure Python version
-
-# Cryptocurrency Exchange Integration
-ccxt==4.1.0
-
-# Environment Management
 python-dotenv==1.0.0
-
-# Telegram Bot Integration
+ta==0.10.0
+ccxt==4.1.0
+websocket-client==1.6.0
 pytelegrambotapi==4.14.0
-
-# Machine Learning & AI
-scikit-learn==1.3.0
-
-# File Processing
-python-multipart==0.0.6
-
-# Development Tools
-watchdog==3.0.0
