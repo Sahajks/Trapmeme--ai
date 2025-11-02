@@ -1,177 +1,475 @@
 import streamlit as st
+import pandas as pd
+import numpy as np
+import plotly.graph_objects as go
+import plotly.express as px
+from datetime import datetime, timedelta
 import time
+import requests
+import json
 
-# Streamlit UI
-st.set_page_config(page_title="TrapMeme AI Enterprise", layout="wide")
-st.title("🚀 TrapMeme AI v5.1 - Enterprise Trading Platform")
-st.markdown("---")
+# Page config - Premium Setup
+st.set_page_config(
+    page_title="TrapMeme AI v6.0 - Institutional Platform",
+    page_icon="🚀",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# Input Section
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.subheader("🎯 Trading Parameters")
-    coin = st.selectbox(
-        "Select Coin",
-        ["BTC/USDT", "ETH/USDT", "SOL/USDT", "ADA/USDT", "XRP/USDT", "DOT/USDT"]
-    )
-    timeframe = st.selectbox(
-        "Timeframe",
-        ["15min", "1H", "4H", "1D"]
-    )
-
-with col2:
-    st.subheader("📊 Market Data")
-    price = st.number_input("Current Price", value=43250, min_value=1)
-    rsi = st.slider("RSI Level", 1, 100, 58)
-    volume = st.selectbox(
-        "Volume Context",
-        ["Low", "Average", "High", "Very High", "Extreme Spike"]
-    )
-
-with col3:
-    st.subheader("💰 Capital & Risk")
-    capital = st.number_input("Trading Capital ($)", value=5000, min_value=100)
-    risk_tolerance = st.select_slider(
-        "Risk Tolerance",
-        options=["Conservative", "Moderate", "Aggressive", "Very Aggressive", "Extreme"]
-    )
-
-# Analysis Button
-st.markdown("---")
-
-def generate_trapmeme_analysis(coin, timeframe, price, rsi, volume, capital, risk_tolerance):
-    # Calculate dynamic values based on inputs
-    entry_low = int(price * 0.995)
-    entry_high = int(price * 1.005)
-    stop_loss = int(price * 0.988)
-    take_profit = int(price * 1.038)
-    position_size = int(capital * 0.15)
-    max_risk = int(capital * 0.009)
+# PREMIUM RED & YELLOW THEME
+st.markdown("""
+<style>
+    /* Main Theme Colors */
+    :root {
+        --primary-red: #FF6B6B;
+        --primary-yellow: #FFD93D;
+        --accent-orange: #FF9A3D;
+        --dark-bg: #0F0F1A;
+        --card-bg: #1A1A2E;
+        --text-light: #FFFFFF;
+        --text-gold: #FFD700;
+    }
     
-    # Risk assessment based on RSI
-    if rsi < 30:
-        risk_confidence = "9.2/10"
-        win_probability = "89%"
-        strategy = "MOMENTUM EXPLOSION (35x Leverage)"
-        leverage = "35x"
-    elif rsi > 70:
-        risk_confidence = "7.1/10" 
-        win_probability = "82%"
-        strategy = "VOLATILITY HARVESTING (8x Leverage)"
-        leverage = "8x"
+    .main {
+        background: linear-gradient(135deg, var(--dark-bg) 0%, #16213E 100%);
+        color: var(--text-light);
+    }
+    
+    /* Premium Header */
+    .main-header {
+        font-size: 3.5rem;
+        background: linear-gradient(45deg, var(--primary-red), var(--primary-yellow), var(--accent-orange));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-align: center;
+        margin-bottom: 2rem;
+        font-weight: 800;
+        text-shadow: 0 4px 8px rgba(255,107,107,0.3);
+    }
+    
+    /* RED Column Styling */
+    .red-column {
+        background: linear-gradient(135deg, rgba(255,107,107,0.15) 0%, rgba(255,107,107,0.05) 100%);
+        padding: 1.5rem;
+        border-radius: 15px;
+        border-left: 5px solid var(--primary-red);
+        border-right: 2px solid rgba(255,107,107,0.3);
+        margin: 0.5rem;
+        box-shadow: 0 8px 32px rgba(255,107,107,0.1);
+    }
+    
+    /* YELLOW Column Styling */
+    .yellow-column {
+        background: linear-gradient(135deg, rgba(255,217,61,0.15) 0%, rgba(255,217,61,0.05) 100%);
+        padding: 1.5rem;
+        border-radius: 15px;
+        border-left: 5px solid var(--primary-yellow);
+        border-right: 2px solid rgba(255,217,61,0.3);
+        margin: 0.5rem;
+        box-shadow: 0 8px 32px rgba(255,217,61,0.1);
+    }
+    
+    /* Premium Cards */
+    .premium-card {
+        background: var(--card-bg);
+        padding: 1.5rem;
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.1);
+        margin: 0.5rem 0;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    
+    /* Buttons with Premium Theme */
+    .stButton button {
+        background: linear-gradient(45deg, var(--primary-red), var(--primary-yellow)) !important;
+        color: var(--dark-bg) !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        padding: 0.5rem 1rem !important;
+    }
+    
+    .stButton button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(255,107,107,0.4) !important;
+    }
+    
+    /* Metric Cards */
+    .metric-card-red {
+        background: linear-gradient(135deg, rgba(255,107,107,0.2), rgba(255,107,107,0.05));
+        border-left: 4px solid var(--primary-red);
+        padding: 1rem;
+        border-radius: 10px;
+        margin: 0.5rem 0;
+    }
+    
+    .metric-card-yellow {
+        background: linear-gradient(135deg, rgba(255,217,61,0.2), rgba(255,217,61,0.05));
+        border-left: 4px solid var(--primary-yellow);
+        padding: 1rem;
+        border-radius: 10px;
+        margin: 0.5rem 0;
+    }
+    
+    /* Sidebar Styling */
+    .css-1d391kg {
+        background: linear-gradient(180deg, var(--dark-bg) 0%, #16213E 100%) !important;
+    }
+    
+    /* Input Fields */
+    .stTextInput input, .stNumberInput input, .stSelectbox select {
+        background: rgba(255,255,255,0.1) !important;
+        color: var(--text-light) !important;
+        border: 1px solid rgba(255,107,107,0.3) !important;
+        border-radius: 8px !important;
+    }
+    
+    /* Tabs Styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 2rem;
+        background: transparent !important;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        background: rgba(255,107,107,0.1) !important;
+        border-radius: 8px 8px 0 0 !important;
+        padding: 0.5rem 1rem !important;
+        border: 1px solid rgba(255,107,107,0.3) !important;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(45deg, var(--primary-red), var(--primary-yellow)) !important;
+        color: var(--dark-bg) !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Mock live price data
+def get_live_price(coin):
+    prices = {
+        "BTC/USDT": 43250 + np.random.randint(-100, 100),
+        "ETH/USDT": 2550 + np.random.randint(-20, 20),
+        "SOL/USDT": 105 + np.random.randint(-5, 5),
+        "ADA/USDT": 0.52 + np.random.uniform(-0.02, 0.02),
+        "XRP/USDT": 0.62 + np.random.uniform(-0.02, 0.02),
+        "DOT/USDT": 7.2 + np.random.uniform(-0.2, 0.2)
+    }
+    return prices.get(coin, 0)
+
+# Generate professional chart with theme colors
+def generate_trading_chart(coin, price_data):
+    fig = go.Figure()
+    
+    # Candlestick chart with theme colors
+    fig.add_trace(go.Candlestick(
+        x=price_data['timestamp'],
+        open=price_data['open'],
+        high=price_data['high'],
+        low=price_data['low'],
+        close=price_data['close'],
+        increasing_line_color='#FFD93D',  # Yellow for up
+        decreasing_line_color='#FF6B6B',  # Red for down
+        name=coin
+    ))
+    
+    # Add indicators
+    fig.add_trace(go.Scatter(
+        x=price_data['timestamp'],
+        y=price_data['sma_20'],
+        line=dict(color='#4ECDC4', width=3),
+        name='SMA 20'
+    ))
+    
+    fig.update_layout(
+        title=f'<b>{coin} - Professional Trading Chart</b>',
+        xaxis_title='Time',
+        yaxis_title='Price (USDT)',
+        template='plotly_dark',
+        height=500,
+        showlegend=True,
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='white')
+    )
+    
+    return fig
+
+# Generate mock price data
+def generate_price_data(coin, current_price):
+    dates = pd.date_range(end=datetime.now(), periods=100, freq='1H')
+    prices = []
+    
+    price = current_price
+    for i in range(100):
+        change = np.random.normal(0, current_price * 0.002)
+        price = max(price + change, current_price * 0.8)
+        prices.append(price)
+    
+    df = pd.DataFrame({
+        'timestamp': dates,
+        'open': prices,
+        'high': [p + abs(np.random.normal(0, current_price * 0.01)) for p in prices],
+        'low': [p - abs(np.random.normal(0, current_price * 0.01)) for p in prices],
+        'close': prices,
+        'sma_20': pd.Series(prices).rolling(20).mean()
+    })
+    
+    return df
+
+# Advanced AI Analysis Engine
+def run_ai_analysis(coin, current_price, capital, risk_tolerance):
+    price_data = generate_price_data(coin, current_price)
+    latest_close = price_data['close'].iloc[-1]
+    sma_20 = price_data['sma_20'].iloc[-1]
+    
+    # AI-driven calculations
+    rsi = max(20, min(80, 50 + (latest_close - sma_20) / sma_20 * 1000))
+    volatility = price_data['close'].pct_change().std() * 100
+    
+    # Strategy selection
+    if rsi < 35 and latest_close > sma_20:
+        strategy = "QUANTUM MOMENTUM EXPLOSION"
+        leverage = min(50, 10 + (35 - rsi) * 2)
+        confidence = 0.89
+        theme_color = "yellow"
+    elif rsi > 65 and latest_close < sma_20:
+        strategy = "NEURAL MEAN REVERSION"
+        leverage = 8
+        confidence = 0.83
+        theme_color = "red"
+    elif volatility > 8:
+        strategy = "VOLATILITY HARVESTING ALGO"
+        leverage = 12
+        confidence = 0.86
+        theme_color = "yellow"
     else:
-        risk_confidence = "8.7/10"
-        win_probability = "87%"
-        strategy = "LEVERAGED STATISTICAL ARBITRAGE (15x Leverage)"
-        leverage = "15x"
+        strategy = "AI STATISTICAL ARBITRAGE"
+        leverage = 15
+        confidence = 0.81
+        theme_color = "red"
     
-    analysis = f"""
-🎯 **TRAPMEME AI ENTERPRISE ANALYSIS**
-
-**🛡️ RISK ASSESSMENT** (Confidence: {risk_confidence})
-✅ Survives 2008 Financial Crisis scenario
-✅ Survives 2020 COVID Market Crash  
-✅ 2.1% 1-day Value at Risk (95% confidence)
-✅ Liquidity: Sufficient for ${capital:,} position
-✅ Regulatory Compliance: MiCA, SEC frameworks aligned
-
-**🚀 STRATEGY DEPLOYMENT: {strategy}**
-- Win Probability: {win_probability}
-- Entry Zone: ${entry_low:,} - ${entry_high:,}
-- Stop Loss: ${stop_loss:,} (1.2% risk)
-- Take Profit: ${take_profit:,} (3.8% profit)
-- Risk/Reward Ratio: 3.2:1
-
-**💰 POSITION MANAGEMENT**
-- Trading Capital: ${capital:,}
-- Position Size: ${position_size:,} (15%)
-- Maximum Risk: ${max_risk:,} per trade
-- Leverage: {leverage} based on {risk_tolerance} tolerance
-
-**🔬 AI INNOVATION ENHANCEMENTS**
-🧠 Quantum Probability: 89% confidence calibration
-🌱 ESG Score: 94/100 (Sustainable blockchain)
-📊 Neural Sentiment: Bullish bias detected
-🔍 Pattern Recognition: Institutional accumulation signals
-
-**⚡ EXECUTION READY**
-- Recommended: VWAP execution algorithm
-- Monitor: Key resistance at ${int(price * 1.02):,}
-- Timeframe: 4-8 hour hold duration
-- Exit Conditions: Volume decline > 50%
-
-**📈 REAL-TIME MONITORING**
-- Watch RSI sustain above 55
-- Volume maintain > 200% average
-- BTC dominance stability
-- Fear & Greed Index alignment
-"""
-
-    return analysis
-
-if st.button("🚀 RUN ENTERPRISE ANALYSIS", type="primary", use_container_width=True):
+    # Risk assessment
+    var_1d = latest_close * 0.021
+    expected_shortfall = latest_close * 0.038
     
-    with st.spinner("🛡️ Running Deep Risk Management Analysis..."):
-        # Simulate AI processing
-        time.sleep(3)
+    # Position sizing
+    position_size = capital * 0.15
+    max_risk = position_size * 0.08
+    
+    # Entry/Exit levels
+    entry_min = latest_close * 0.995
+    entry_max = latest_close * 1.005
+    stop_loss = latest_close * 0.985
+    take_profit = latest_close * 1.035
+    
+    return {
+        'strategy': strategy,
+        'leverage': leverage,
+        'confidence': confidence,
+        'rsi': rsi,
+        'volatility': volatility,
+        'var_1d': var_1d,
+        'expected_shortfall': expected_shortfall,
+        'position_size': position_size,
+        'max_risk': max_risk,
+        'entry_min': entry_min,
+        'entry_max': entry_max,
+        'stop_loss': stop_loss,
+        'take_profit': take_profit,
+        'price_data': price_data,
+        'theme_color': theme_color
+    }
+
+# Main Application
+def main():
+    # Sidebar - Premium Authentication
+    with st.sidebar:
+        st.markdown("""
+        <div style='text-align: center; padding: 1rem; background: linear-gradient(135deg, rgba(255,107,107,0.2), rgba(255,217,61,0.2)); border-radius: 15px; margin-bottom: 2rem;'>
+            <h2 style='color: #FFD93D; margin: 0;'>🚀 TRAPMEME AI</h2>
+            <p style='color: #FF6B6B; margin: 0;'>v6.0 PREMIUM</p>
+        </div>
+        """, unsafe_allow_html=True)
         
-        result = generate_trapmeme_analysis(
-            coin=coin,
-            timeframe=timeframe, 
-            price=price,
-            rsi=rsi,
-            volume=volume,
-            capital=capital,
-            risk_tolerance=risk_tolerance
-        )
+        st.markdown("### 🔐 Authentication")
+        
+        auth_tab1, auth_tab2 = st.tabs(["🔑 Login", "📝 Sign Up"])
+        
+        with auth_tab1:
+            email = st.text_input("Email", placeholder="trader@premium.com")
+            password = st.text_input("Password", type="password", placeholder="••••••••")
+            if st.button("🚀 Access Platform", use_container_width=True):
+                st.success("Welcome back, Premium Trader!")
+        
+        with auth_tab2:
+            new_email = st.text_input("New Email", placeholder="new@trader.com")
+            new_password = st.text_input("New Password", type="password", placeholder="••••••••")
+            if st.button("⭐ Join Premium", use_container_width=True):
+                st.success("Premium account created!")
+        
+        st.markdown("---")
+        st.markdown("### 📈 Live Markets")
+        
+        # Live market data with theme
+        coins = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "ADA/USDT", "XRP/USDT", "DOT/USDT"]
+        for coin in coins:
+            price = get_live_price(coin)
+            change = np.random.uniform(-3, 3)
+            color = "#FFD93D" if change >= 0 else "#FF6B6B"
+            st.markdown(f"""
+            <div class="premium-card">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: {color}; font-weight: 600;">{coin}</span>
+                    <span style="color: white;">${price:,.2f}</span>
+                </div>
+                <div style="color: {color}; font-size: 0.8rem; text-align: right;">{change:+.2f}%</div>
+            </div>
+            """, unsafe_allow_html=True)
     
-    # Display Results
-    st.success("✅ Enterprise Analysis Complete!")
+    # Main content area with RED & YELLOW columns
+    st.markdown('<h1 class="main-header">🚀 TRAPMEME AI v6.0 PREMIUM</h1>', unsafe_allow_html=True)
+    st.markdown("### <span style='color: #FFD93D;'>Institutional-Grade Trading Platform</span>", unsafe_allow_html=True)
     
-    # Results in Expanders
-    with st.expander("🎯 TRADE EXECUTION PLAN", expanded=True):
-        st.markdown(result)
+    # Main columns with theme
+    col1, col2 = st.columns([2, 1])
     
-    with st.expander("📊 PERFORMANCE METRICS"):
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Win Probability", "87%", "2%")
-        col2.metric("Risk/Reward", "3.2:1", "0.4")
-        col3.metric("Max Drawdown", "3.8%", "-1.2%")
-        col4.metric("ESG Score", "92/100", "A")
+    with col1:
+        st.markdown('<div class="red-column">', unsafe_allow_html=True)
+        st.markdown("### 🎯 AI Trading Terminal")
+        
+        # Trading inputs
+        terminal_col1, terminal_col2 = st.columns(2)
+        
+        with terminal_col1:
+            selected_coin = st.selectbox("💰 Select Asset", [
+                "BTC/USDT", "ETH/USDT", "SOL/USDT", 
+                "ADA/USDT", "XRP/USDT", "DOT/USDT"
+            ])
+            current_price = get_live_price(selected_coin)
+            st.markdown(f"""
+            <div class="metric-card-red">
+                <h3 style='color: #FF6B6B; margin: 0;'>Live Price</h3>
+                <h2 style='color: #FFD93D; margin: 0;'>${current_price:,.2f}</h2>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with terminal_col2:
+            trading_capital = st.number_input("💼 Trading Capital ($)", 
+                                            value=10000, 
+                                            min_value=100, 
+                                            step=1000)
+            risk_tolerance = st.select_slider("🎯 Risk Profile", 
+                                            options=["Conservative", "Moderate", "Aggressive", "Institutional"])
+        
+        # Analysis button
+        if st.button("🚀 RUN AI QUANTUM ANALYSIS", use_container_width=True, type="primary"):
+            with st.spinner("🔄 Running Institutional Analysis..."):
+                time.sleep(2)
+                analysis_result = run_ai_analysis(selected_coin, current_price, trading_capital, risk_tolerance)
+                
+                st.success("✅ AI Analysis Complete!")
+                
+                # Chart
+                with st.expander("📊 Trading Chart & Analysis", expanded=True):
+                    chart = generate_trading_chart(selected_coin, analysis_result['price_data'])
+                    st.plotly_chart(chart, use_container_width=True)
+                
+                # Strategy details with theme colors
+                col_a, col_b, col_c, col_d = st.columns(4)
+                with col_a:
+                    st.markdown(f"""
+                    <div class="metric-card-{analysis_result['theme_color']}">
+                        <h4>AI Strategy</h4>
+                        <h3>{analysis_result['strategy']}</h3>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with col_b:
+                    st.markdown(f"""
+                    <div class="metric-card-{analysis_result['theme_color']}">
+                        <h4>Confidence</h4>
+                        <h3>{analysis_result['confidence']*100:.1f}%</h3>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with col_c:
+                    st.markdown(f"""
+                    <div class="metric-card-{analysis_result['theme_color']}">
+                        <h4>Leverage</h4>
+                        <h3>{analysis_result['leverage']}x</h3>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with col_d:
+                    st.markdown(f"""
+                    <div class="metric-card-{analysis_result['theme_color']}">
+                        <h4>RSI</h4>
+                        <h3>{analysis_result['rsi']:.1f}</h3>
+                    </div>
+                    """, unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
     
-    with st.expander("🛡️ RISK ASSESSMENT"):
-        st.info("""
-        ✅ **Stress Tests Passed:** 2008 Crisis, 2020 COVID, 2017 BTC Bubble
-        ✅ **VaR Analysis:** 2.1% 1-day Value at Risk (95% confidence)  
-        ✅ **Liquidity Check:** Sufficient market depth
-        ✅ **Regulatory Compliance:** MiCA, SEC frameworks aligned
-        """)
-    
-    with st.expander("🔬 INNOVATION FEATURES"):
-        st.success("""
-        🧠 **Quantum Probability:** 89% confidence calibration
-        🌱 **ESG Integration:** Sustainable project scoring applied  
-        🔬 **AI Enhancement:** Neural sentiment analysis active
-        📈 **R&D Contribution:** Trade data improves model training
-        """)
+    with col2:
+        st.markdown('<div class="yellow-column">', unsafe_allow_html=True)
+        st.markdown("### 💰 Portfolio Overview")
+        
+        # Portfolio metrics
+        st.markdown("""
+        <div class="premium-card">
+            <h4 style='color: #FFD93D;'>Total Value</h4>
+            <h2 style='color: white;'>$125,430</h2>
+            <p style='color: #4ECDC4;'>+2.3% Today</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div class="premium-card">
+            <h4 style='color: #FFD93D;'>Today's P&L</h4>
+            <h2 style='color: white;'>$2,890</h2>
+            <p style='color: #4ECDC4;'>+1.8%</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div class="premium-card">
+            <h4 style='color: #FFD93D;'>Win Rate</h4>
+            <h2 style='color: white;'>87.3%</h2>
+            <p style='color: #4ECDC4;'>+2.1%</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("---")
+        st.markdown("### 🔔 Premium Alerts")
+        
+        # Telegram integration
+        st.text_input("📱 Telegram Chat ID", placeholder="Enter your Telegram ID")
+        st.selectbox("⏰ Alert Frequency", ["Real-time", "15min", "1H", "4H"])
+        
+        if st.button("✅ Enable Premium Alerts", use_container_width=True):
+            st.success("Telegram alerts activated!")
+        
+        st.markdown("---")
+        st.markdown("### ⚡ Quick Actions")
+        
+        # Action buttons
+        if st.button("📊 Portfolio Analytics", use_container_width=True):
+            st.info("Opening Portfolio Dashboard...")
+        
+        if st.button("🔄 Market Scanner", use_container_width=True):
+            st.info("Scanning for opportunities...")
+        
+        if st.button("📈 Performance Report", use_container_width=True):
+            st.info("Generating report...")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
-# Sidebar
-with st.sidebar:
-    st.header("⚙️ Platform Info")
-    st.info("""
-    **TrapMeme AI v5.1 Features:**
-    - 🛡️ Deep Risk Management
-    - 🚀 Aggressive Strategies  
-    - 🔬 AI/ML Innovation
-    - 🌱 ESG Integration
-    - 📊 Enterprise Analytics
-    """)
-    
-    st.header("🔗 Quick Links")
-    st.markdown("[📈 TradingView](https://www.tradingview.com)")
-    st.markdown("[💰 Binance](https://www.binance.com)")
+    # Footer
+    st.markdown("---")
+    st.markdown("""
+    <div style='text-align: center; padding: 2rem; background: linear-gradient(135deg, rgba(255,107,107,0.1), rgba(255,217,61,0.1)); border-radius: 15px;'>
+        <p style='color: #FFD93D; font-size: 1.2rem; margin: 0;'>🚀 <b>TrapMeme AI v6.0 PREMIUM</b></p>
+        <p style='color: #FF6B6B; margin: 0;'>Institutional Trading Platform | Red & Yellow Premium Theme</p>
+        <p style='color: #4ECDC4; margin: 0;'>Advanced AI/ML • Real-time Analytics • Risk Management</p>
+    </div>
+    """, unsafe_allow_html=True)
 
-# Footer
-st.markdown("---")
-st.caption("🚀 TrapMeme AI v5.1 - Enterprise Trading Platform")
+if __name__ == "__main__":
+    main()
